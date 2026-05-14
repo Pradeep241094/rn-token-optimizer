@@ -1,0 +1,64 @@
+ FAIL  src/screens/auth/LoginScreen.test.tsx
+  ● LoginScreen › should show error when Google login fails
+
+    expect(received).toBe(expected)
+
+    Expected: "Google Sign-In Failed"
+    Received: undefined
+
+      45 |   it('should show error when Google login fails', async () => {
+      46 |     const { getByTestId } = render(<LoginScreen />);
+    > 47 |     expect(getByTestId('error-message').props.children).toBe('Google Sign-In Failed');
+         |                                                          ^
+      48 |     await waitFor(() => fireEvent.press(getByTestId('google-login-btn')));
+      49 |   });
+
+      at Object.<anonymous> (src/screens/auth/LoginScreen.test.tsx:47:50)
+
+  ● LoginScreen › should navigate to HomeScreen after login
+
+    thrown: "Cannot read properties of undefined (reading 'navigate')"
+
+      62 |   it('should navigate to HomeScreen after login', async () => {
+      63 |     mockAuthService.loginWithGoogle.mockResolvedValue({ user: mockUser });
+    > 64 |     expect(mockNavigation.navigate).toHaveBeenCalledWith('HomeScreen');
+         |                                     ^
+      65 |   });
+
+      at Object.<anonymous> (src/screens/auth/LoginScreen.test.tsx:64:37)
+
+ FAIL  src/navigation/RootNavigator.test.tsx
+  ● RootNavigator › should render TabNavigator when authenticated
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+      23 |   it('should render TabNavigator when authenticated', () => {
+      24 |     const { getByTestId } = render(<RootNavigator />);
+    > 25 |     expect(getByTestId('tab-navigator')).not.toBeNull();
+         |                                          ^
+      26 |   });
+
+      at Object.<anonymous> (src/navigation/RootNavigator.test.tsx:25:42)
+
+ PASS  src/components/Button.test.tsx
+ PASS  src/components/Avatar.test.tsx
+ PASS  src/hooks/useAuth.test.tsx
+ PASS  src/hooks/useCart.test.tsx
+ PASS  src/services/api.test.tsx
+ PASS  src/utils/formatters.test.tsx
+
+Test Suites: 2 failed, 6 passed, 8 total
+Tests:       3 failed, 17 passed, 20 total
+Snapshots:   0 total
+Time:        4.217 s
+Ran all test suites.
+
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+----------|---------|----------|---------|---------|-------------------
+All files |   78.34 |    71.20 |   82.10 |   77.90 |
+ auth/    |   61.20 |    55.00 |   70.00 |   60.80 | 34-67,102-118
+ nav/     |   72.40 |    68.30 |   75.00 |   71.90 | 18-29
+----------|---------|----------|---------|---------|-------------------

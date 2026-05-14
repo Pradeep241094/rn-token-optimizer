@@ -1,0 +1,32 @@
+info Running jetifier to migrate libraries to AndroidX. You can disable it using "--no-jetifier" flag.
+Jetifier found 1183 file(s) to forward-jetify. Using 8 workers...
+info JS server already running.
+info Installing the app...
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugManifest
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:packageDebug
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:processDebugManifest'.
+> Manifest merger failed : Attribute application@label value=(@string/app_name) from AndroidManifest.xml:9:9-41
+  	is also present in com.google.android.gms:play-services-auth:20.7.0 binary AndroidManifest.xml:13:9-35 value=(@string/common_google_play_services_unknown_issue)
+  	Suggestion: add 'tools:replace="android:label"' to <application> element at AndroidManifest.xml:6:5-56 to override.
+
+* Try:
+> Run with --stacktrace option to get the full exception message.
+> Run with --info or --debug options to get more log output.
+> Run with --scan to get a full build scan.
+
+BUILD FAILED in 43s
+22 actionable tasks: 8 executed, 14 up-to-date
+
+error Failed to install the app. Make sure you have the Android development environment set up.
+error Run CLI with --verbose flag for more details.

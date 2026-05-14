@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "rn-token-optimizer": {
+      "command": "rn-token-optimizer-mcp"
+    }
+  }
+}

@@ -175,15 +175,6 @@ rn-token-optimizer graph snippet "src/screens/Login.tsx:handleAuth"
 rn-token-optimizer graph query "MATCH (n:Screen) RETURN n.name, n.file_path LIMIT 20"
 ```
 
-### Token efficiency
-
-| Task | File-by-file | Graph query | Savings |
-|------|-------------|-------------|---------|
-| Find what calls `handleGoogleLogin` | ~18,000 tokens | ~300 tokens | **98%** |
-| List all screens | ~5,000 tokens | ~120 tokens | **98%** |
-| Architecture overview | ~50,000 tokens | ~400 tokens | **99%** |
-| Dead code detection | ~30,000 tokens | ~200 tokens | **99%** |
-
 ### Ask your IDE instead
 
 Once the MCP server is running in Cursor or Kiro, just ask in chat:

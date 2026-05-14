@@ -14,8 +14,8 @@
 | Pillar | What you get |
 |--------|-------------|
 | **Code Intelligence Graph** | Indexes every `.ts/.tsx/.js/.jsx` file into a persistent SQLite knowledge graph. 18 MCP tools let your IDE answer "who calls this?", "show all screens", "what does my git diff break?" without reading a single file |
-| **Prompt Optimization** | Compresses verbose natural-language prompts into a Military-English DSL before they reach the LLM — typically **70–90% fewer tokens** |
-| **Terminal Compression** | Pipes Metro/Jest/Android build output through Claude and returns a 3-line DSL answer — typically **95–99% fewer tokens** |
+| **Prompt Optimization** | Compresses verbose natural-language prompts into a Military-English DSL before they reach the LLM — typically **60% fewer tokens** |
+| **Terminal Compression** | Pipes Metro/Jest/Android build output through Claude and returns a 3-line DSL answer — typically ** atleast 50% fewer tokens** |
 | **MCP Integration** | A local MCP server auto-triggers on a keyword in Cursor, Kiro, or Claude Desktop. No API key required — runs in passthrough mode using your existing IDE subscription |
 
 ---

@@ -1,0 +1,85 @@
+{
+  "name": "rn-token-optimizer",
+  "version": "1.0.0",
+  "description": "AST code graph + prompt optimizer + MCP server for React Native AI coding agents. Indexes your project into a persistent knowledge graph, compresses prompts and terminal output up to 99%, and exposes 18 MCP tools for Cursor, Kiro, and Claude Desktop.",
+  "keywords": [
+    "react-native",
+    "token-optimizer",
+    "code-intelligence",
+    "knowledge-graph",
+    "ast",
+    "mcp",
+    "model-context-protocol",
+    "cursor",
+    "kiro",
+    "claude",
+    "ai-coding",
+    "llm",
+    "prompt-engineering",
+    "prompt-compression",
+    "metro",
+    "jest",
+    "sqlite",
+    "typescript"
+  ],
+  "author": "Pradeep Margasahayam Prakash <https://github.com/Pradeep241094>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Pradeep241094/rn-token-optimizer.git"
+  },
+  "homepage": "https://github.com/Pradeep241094/rn-token-optimizer#readme",
+  "bugs": {
+    "url": "https://github.com/Pradeep241094/rn-token-optimizer/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "rn-token-optimizer": "./dist/cli/index.js",
+    "rn-token-optimizer-mcp": "./dist/mcp/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "install.sh",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@typescript-eslint/typescript-estree": "^8.59.3",
+    "better-sqlite3": "^12.10.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "inquirer": "^10.2.2",
+    "ora": "^8.1.1",
+    "tiktoken": "^1.0.21"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

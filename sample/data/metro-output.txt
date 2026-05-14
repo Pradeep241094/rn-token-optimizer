@@ -1,0 +1,38 @@
+info Starting Metro Bundler
+info Downloading JS bundle...
+Loading dependency graph, done.
+Scanning 1247 files...
+Scanning 1247 files... (87%)
+Scanning 1247 files... (100%)
+
+ BUNDLE  ./index.js
+
+info JS server listening on port 8081
+info Fetching bundler cache...
+info Found cache hit for index.js
+
+error: bundleFailedError: TransformError
+  Unable to transform module `./src/screens/CheckoutScreen.tsx`:
+
+  /Users/dev/MyShoppingApp/src/screens/CheckoutScreen.tsx: SyntaxError: /Users/dev/MyShoppingApp/src/screens/CheckoutScreen.tsx: Unexpected token (47:12)
+
+    45 |   const handlePayment = async () => {
+    46 |     try {
+  > 47 |       const result = await PaymentService.charge({
+       |             ^
+    48 |         amount: cartTotal,
+    49 |         currency: 'USD'
+    50 |       });
+
+  SyntaxError: Unexpected token (47:12)
+    at _raise (/Users/dev/MyShoppingApp/node_modules/@babel/parser/src/parser/error.js:97:45)
+    at /Users/dev/MyShoppingApp/node_modules/@babel/parser/src/parser/expression.js:298:16
+
+error Failed to bundle the app, Error: TransformError
+info Reloading...
+
+warn Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+
+info Metro bundler is ready.
+info Client connected.

@@ -1,0 +1,21 @@
+{
+  "name": "rn-token-optimizer-sample",
+  "version": "1.0.0",
+  "description": "Sample project demonstrating rn-token-optimizer in a React Native development workflow",
+  "type": "module",
+  "scripts": {
+    "demo": "node --import tsx/esm src/demo-full.ts",
+    "demo:prompts": "node --import tsx/esm src/demo-prompt-optimizer.ts",
+    "demo:terminal": "node --import tsx/esm src/demo-terminal.ts",
+    "demo:mock": "node --import tsx/esm src/demo-mock.ts",
+    "demo:slash": "node --import tsx/esm src/demo-slash.ts"
+  },
+  "dependencies": {
+    "rn-token-optimizer": "file:.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

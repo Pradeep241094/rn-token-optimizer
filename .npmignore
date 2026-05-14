@@ -1,0 +1,27 @@
+# Source code — never ship TypeScript sources
+src/
+tsup.config.ts
+tsconfig.json
+
+# Sample project
+sample/
+
+# Cursor / Kiro IDE configs (project-local)
+.cursor/
+.kiro/
+
+# Development & test artefacts
+*.log
+*.map
+coverage/
+.rn-token-optimizer/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# CI / tooling
+.github/
+.husky/
+node_modules/

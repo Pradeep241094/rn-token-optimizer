@@ -1,11 +1,13 @@
 import { defineConfig } from 'tsup';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default defineConfig([
   {
     entry: { index: 'src/index.ts' },
     format: ['esm', 'cjs'],
     dts: true,
-    sourcemap: true,
+    sourcemap: isDev,
     clean: true,
     splitting: false,
     treeshake: true,
@@ -16,7 +18,7 @@ export default defineConfig([
     entry: { 'cli/index': 'src/cli/index.ts' },
     format: ['esm'],
     dts: false,
-    sourcemap: true,
+    sourcemap: isDev,
     splitting: false,
     treeshake: true,
     outDir: 'dist',
@@ -32,7 +34,7 @@ export default defineConfig([
     entry: { 'mcp/index': 'src/mcp/index.ts' },
     format: ['esm'],
     dts: false,
-    sourcemap: true,
+    sourcemap: isDev,
     splitting: false,
     treeshake: true,
     outDir: 'dist',

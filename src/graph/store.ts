@@ -222,8 +222,8 @@ export class GraphStore {
 
     const sql = `
       SELECT n.*,
-        (SELECT COUNT(*) FROM edges e WHERE e.project_id = n.project_id AND e.target_id = n.id AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO')) AS caller_count,
-        (SELECT COUNT(*) FROM edges e WHERE e.project_id = n.project_id AND e.source_id = n.id AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO')) AS callee_count
+        (SELECT COUNT(*) FROM edges e WHERE e.project_id = n.project_id AND e.target_id = n.id AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO','INJECTS')) AS caller_count,
+        (SELECT COUNT(*) FROM edges e WHERE e.project_id = n.project_id AND e.source_id = n.id AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO','INJECTS')) AS callee_count
       FROM nodes n
       WHERE ${conditions.join(' AND ')}
       ORDER BY caller_count DESC
@@ -240,19 +240,23 @@ export class GraphStore {
   // ── BFS call tracing ───────────────────────────────────────────────────────
 
   getDirectCallers(nodeId: string): GraphNode[] {
+    // INJECTS is included so "who uses this Service?" returns its consumers
     const rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       JOIN edges e ON e.source_id = n.id
-      WHERE e.project_id = ? AND e.target_id = ? AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO')
+      WHERE e.project_id = ? AND e.target_id = ?
+        AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO','INJECTS')
     `).all(this.projectId, nodeId) as Record<string, unknown>[];
     return rows.map(rowToNode);
   }
 
   getDirectCallees(nodeId: string): Array<{ node: GraphNode; edgeType: EdgeType }> {
+    // INJECTS is included so "what does this Controller depend on?" shows injected services
     const rows = this.db.prepare(`
       SELECT n.*, e.edge_type AS _edge_type FROM nodes n
       JOIN edges e ON e.target_id = n.id
-      WHERE e.project_id = ? AND e.source_id = ? AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO')
+      WHERE e.project_id = ? AND e.source_id = ?
+        AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO','INJECTS')
     `).all(this.projectId, nodeId) as Array<Record<string, unknown>>;
     return rows.map(r => ({
       node: rowToNode(r),
@@ -288,15 +292,30 @@ export class GraphStore {
     const rows = this.db.prepare(`
       SELECT n.* FROM nodes n
       WHERE n.project_id = ?
-        AND n.label IN ('Function','Screen','Hook','Component','Provider','Slice')
+        AND n.label IN (
+          -- TypeScript / React Native
+          'Function','Screen','Hook','Component','Provider','Slice',
+          -- .NET / C# (Controllers are HTTP entry points so excluded)
+          'Service','Repository','Middleware','ApiEndpoint'
+        )
         AND (SELECT COUNT(*) FROM edges e
              WHERE e.project_id = n.project_id
                AND e.target_id = n.id
-               AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO')) = 0
+               AND e.edge_type IN ('CALLS','RENDERS','NAVIGATES_TO','INJECTS')) = 0
         ${excludeParts}
       ORDER BY n.file_path, n.line_start
     `).all(this.projectId, ...entryFilePatterns) as Record<string, unknown>[];
     return rows.map(rowToNode);
+  }
+
+  /**
+   * Detects the primary language of the indexed project by checking for
+   * .NET-specific node labels. Falls back to 'typescript'.
+   */
+  detectLanguage(): 'csharp' | 'typescript' {
+    const counts = this.countByLabel();
+    const dotNetLabels: string[] = ['Controller', 'Service', 'Repository', 'ApiEndpoint', 'Middleware'];
+    return dotNetLabels.some(l => (counts[l] ?? 0) > 0) ? 'csharp' : 'typescript';
   }
 
   // ── Label queries ──────────────────────────────────────────────────────────

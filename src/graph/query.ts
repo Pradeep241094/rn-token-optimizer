@@ -129,65 +129,206 @@ export function getArchitecture(rootDir = process.cwd()): ArchitectureReport | n
     const project = store.getProject();
     if (!project) return null;
 
-    const counts     = store.countByLabel();
-    const screens    = store.getNodesByLabel('Screen', 50);
-    const navigators = store.getNodesByLabel('Navigator', 20);
-    const hotspots   = store.getHotspots(10);
-    const deadCount  = store.getDeadCode(['App.', 'index.']).length;
+    const counts  = store.countByLabel();
+    const lang    = store.detectLanguage();
+    const hotspots = store.getHotspots(10);
 
-    // Entry points: exported nodes from App.tsx / index.ts
-    const entryPoints = store.searchNodes({
-      filePattern: 'App',
-      exported: true,
-      limit: 10,
-    }).map(r => r.node)
-    .concat(
-      store.searchNodes({ filePattern: 'index', exported: true, limit: 10 }).map(r => r.node)
-    ).slice(0, 15);
-
-    // RN stack from package.json
-    let rnStack: string[] = [];
-    try {
-      const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')) as {
-        dependencies?: Record<string, string>;
-      };
-      const known: Record<string, string> = {
-        '@react-navigation/native': 'NAV',
-        '@reduxjs/toolkit': 'REDUX',
-        'zustand': 'ZUSTAND',
-        '@tanstack/react-query': 'QUERY',
-        'react-native-firebase': 'FIRE',
-        '@react-native-google-signin/google-signin': 'GSIGN',
-        'react-native-reanimated': 'ANIM',
-      };
-      for (const [dep, alias] of Object.entries(known)) {
-        if (pkg.dependencies?.[dep]) rnStack.push(`${alias}=${dep}`);
-      }
-    } catch { /* no package.json */ }
-
-    return {
-      projectName: project.name,
-      indexedAt:   project.indexedAt,
-      stats: {
-        totalNodes:    project.nodeCount,
-        totalEdges:    project.edgeCount,
-        fileCount:     counts['File']      ?? 0,
-        functionCount: counts['Function']  ?? 0,
-        classCount:    counts['Class']     ?? 0,
-        screenCount:   counts['Screen']    ?? 0,
-        hookCount:     counts['Hook']      ?? 0,
-        navigatorCount: counts['Navigator'] ?? 0,
-      },
-      entryPoints,
-      screens,
-      navigators,
-      hotspots: hotspots.map(h => ({ node: h.node, inDegree: h.inDegree, outDegree: h.outDegree })),
-      deadCodeCount: deadCount,
-      rnStack,
-    };
+    if (lang === 'csharp') {
+      return buildDotNetReport(project, counts, hotspots, store, rootDir);
+    }
+    return buildTypeScriptReport(project, counts, hotspots, store, rootDir);
   } finally {
     store.close();
   }
+}
+
+// ─── .NET report builder ──────────────────────────────────────────────────────
+
+function buildDotNetReport(
+  project:   ReturnType<ReturnType<typeof openGraphStore>['getProject']> & object,
+  counts:    Record<string, number>,
+  hotspots:  ReturnType<ReturnType<typeof openGraphStore>['getHotspots']>,
+  store:     ReturnType<typeof openGraphStore>,
+  rootDir:   string,
+): ArchitectureReport {
+  const controllers  = store.getNodesByLabel('Controller',  30);
+  const services     = store.getNodesByLabel('Service',     50);
+  const repositories = store.getNodesByLabel('Repository',  50);
+  const apiEndpoints = store.getNodesByLabel('ApiEndpoint', 100);
+
+  // Entry points = controller action methods (routable HTTP endpoints)
+  const entryPoints = apiEndpoints.slice(0, 15);
+
+  // Dead code — excludes Program/Startup (DI-wired entry points)
+  const deadCount = store.getDeadCode(['Program.', 'Startup.']).length;
+
+  // Tech stack from .csproj / Directory.Packages.props
+  const techStack = readDotNetStack(rootDir);
+
+  return {
+    projectName:     project.name,
+    indexedAt:       project.indexedAt,
+    projectLanguage: 'csharp',
+    stats: {
+      totalNodes:      project.nodeCount,
+      totalEdges:      project.edgeCount,
+      fileCount:       counts['File']        ?? 0,
+      functionCount:   counts['Function']    ?? 0,
+      classCount:      counts['Class']       ?? 0,
+      screenCount:     0,
+      hookCount:       0,
+      navigatorCount:  0,
+      controllerCount: counts['Controller']  ?? 0,
+      serviceCount:    counts['Service']     ?? 0,
+      repositoryCount: counts['Repository']  ?? 0,
+      apiEndpointCount: counts['ApiEndpoint'] ?? 0,
+    },
+    entryPoints,
+    screens:     [],
+    navigators:  [],
+    controllers,
+    services,
+    repositories,
+    apiEndpoints,
+    hotspots: hotspots.map(h => ({ node: h.node, inDegree: h.inDegree, outDegree: h.outDegree })),
+    deadCodeCount: deadCount,
+    techStack,
+    rnStack: [],
+  };
+}
+
+// ─── TypeScript / React Native report builder ─────────────────────────────────
+
+function buildTypeScriptReport(
+  project:   ReturnType<ReturnType<typeof openGraphStore>['getProject']> & object,
+  counts:    Record<string, number>,
+  hotspots:  ReturnType<ReturnType<typeof openGraphStore>['getHotspots']>,
+  store:     ReturnType<typeof openGraphStore>,
+  rootDir:   string,
+): ArchitectureReport {
+  const screens    = store.getNodesByLabel('Screen',    50);
+  const navigators = store.getNodesByLabel('Navigator', 20);
+  const deadCount  = store.getDeadCode(['App.', 'index.']).length;
+
+  // Entry points: exported nodes from App.tsx / index.ts
+  const entryPoints = store.searchNodes({ filePattern: 'App',   exported: true, limit: 10 }).map(r => r.node)
+    .concat(store.searchNodes({ filePattern: 'index', exported: true, limit: 10 }).map(r => r.node))
+    .slice(0, 15);
+
+  // RN / npm stack from package.json
+  const techStack = readRnStack(rootDir);
+
+  return {
+    projectName:     project.name,
+    indexedAt:       project.indexedAt,
+    projectLanguage: 'typescript',
+    stats: {
+      totalNodes:      project.nodeCount,
+      totalEdges:      project.edgeCount,
+      fileCount:       counts['File']       ?? 0,
+      functionCount:   counts['Function']   ?? 0,
+      classCount:      counts['Class']      ?? 0,
+      screenCount:     counts['Screen']     ?? 0,
+      hookCount:       counts['Hook']       ?? 0,
+      navigatorCount:  counts['Navigator']  ?? 0,
+      controllerCount:  0,
+      serviceCount:     0,
+      repositoryCount:  0,
+      apiEndpointCount: 0,
+    },
+    entryPoints,
+    screens,
+    navigators,
+    controllers:  [],
+    services:     [],
+    repositories: [],
+    apiEndpoints: [],
+    hotspots: hotspots.map(h => ({ node: h.node, inDegree: h.inDegree, outDegree: h.outDegree })),
+    deadCodeCount: deadCount,
+    techStack,
+    rnStack: techStack,   // backward compat alias
+  };
+}
+
+// ─── Tech stack helpers ───────────────────────────────────────────────────────
+
+function readRnStack(rootDir: string): string[] {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+    const known: Record<string, string> = {
+      '@react-navigation/native':              'NAV',
+      '@reduxjs/toolkit':                      'REDUX',
+      'zustand':                               'ZUSTAND',
+      '@tanstack/react-query':                 'QUERY',
+      'react-native-firebase':                 'FIRE',
+      '@react-native-google-signin/google-signin': 'GSIGN',
+      'react-native-reanimated':               'ANIM',
+    };
+    return Object.entries(known)
+      .filter(([dep]) => pkg.dependencies?.[dep])
+      .map(([dep, alias]) => `${alias}=${dep}`);
+  } catch {
+    return [];
+  }
+}
+
+function readDotNetStack(rootDir: string): string[] {
+  const stack: string[] = [];
+  try {
+    // Walk up to 2 levels for *.csproj files
+    const found = findCsprojFiles(rootDir);
+    for (const csprojPath of found) {
+      const content = fs.readFileSync(csprojPath, 'utf8');
+      const known: Record<string, string> = {
+        'Microsoft.AspNetCore':      'ASPNET',
+        'EntityFrameworkCore':       'EF',
+        'MediatR':                   'MEDIATR',
+        'AutoMapper':                'AUTOMAP',
+        'FluentValidation':          'FLUENT',
+        'Serilog':                   'SERILOG',
+        'Swashbuckle':               'SWAGGER',
+        'MassTransit':               'MASSTRANS',
+        'Polly':                     'POLLY',
+        'Dapper':                    'DAPPER',
+        'StackExchange.Redis':       'REDIS',
+        'Hangfire':                  'HANGFIRE',
+        'NUnit':                     'NUNIT',
+        'xunit':                     'XUNIT',
+      };
+      for (const [pkg, alias] of Object.entries(known)) {
+        if (content.includes(pkg) && !stack.includes(alias)) {
+          stack.push(alias);
+        }
+      }
+      if (stack.length > 0) break; // first csproj is enough for the summary
+    }
+  } catch { /* ignore */ }
+  return stack;
+}
+
+function findCsprojFiles(rootDir: string): string[] {
+  const results: string[] = [];
+  try {
+    for (const entry of fs.readdirSync(rootDir)) {
+      if (entry.endsWith('.csproj')) results.push(path.join(rootDir, entry));
+    }
+    if (results.length === 0) {
+      // one level deep
+      for (const dir of fs.readdirSync(rootDir)) {
+        const sub = path.join(rootDir, dir);
+        try {
+          if (fs.statSync(sub).isDirectory()) {
+            for (const entry of fs.readdirSync(sub)) {
+              if (entry.endsWith('.csproj')) results.push(path.join(sub, entry));
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* ignore */ }
+  return results;
 }
 
 // ─── detectChanges ────────────────────────────────────────────────────────────

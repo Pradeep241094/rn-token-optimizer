@@ -49,6 +49,7 @@
   },
   "files": [
     "dist",
+    "roslyn-analyzer",
     "install.sh",
     "LICENSE",
     "README.md"

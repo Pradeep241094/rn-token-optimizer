@@ -12,7 +12,15 @@ export type NodeLabel =
   | 'Hook'
   | 'Navigator'
   | 'Provider'
-  | 'Slice';
+  | 'Slice'
+  // .NET / C#-specific
+  | 'Controller'    // ASP.NET MVC/API controller
+  | 'Service'       // DI-registered service / business-logic class
+  | 'Repository'    // data-access repository
+  | 'Middleware'    // ASP.NET middleware
+  | 'ApiEndpoint'   // controller action method
+  | 'ViewModel'     // ViewModel / DTO / Request / Response class
+  | 'Namespace';    // C# namespace declaration
 
 // ─── Edge types ───────────────────────────────────────────────────────────────
 
@@ -25,7 +33,10 @@ export type EdgeType =
   | 'INHERITS'       // Class → Class
   | 'RENDERS'        // Component/Screen → Component (JSX usage)
   | 'NAVIGATES_TO'   // Screen/Function → Screen (navigate/push/replace)
-  | 'USES_TYPE';     // Function/Class → Type/Interface
+  | 'USES_TYPE'      // Function/Class → Type/Interface
+  // .NET-specific
+  | 'INJECTS'        // constructor param resolved to a Service/Repository node
+  | 'HANDLES_ROUTE'; // ApiEndpoint → HTTP route string (stored as edge property)
 
 // ─── Core graph entities ──────────────────────────────────────────────────────
 
@@ -111,22 +122,39 @@ export interface HotspotEntry {
 export interface ArchitectureReport {
   projectName: string;
   indexedAt: string;
+  /** Detected from stored node labels — 'csharp' when Controller/Service/Repository exist. */
+  projectLanguage: 'typescript' | 'csharp';
   stats: {
     totalNodes: number;
     totalEdges: number;
     fileCount: number;
     functionCount: number;
     classCount: number;
+    // TypeScript / React Native
     screenCount: number;
     hookCount: number;
     navigatorCount: number;
+    // .NET / C#
+    controllerCount: number;
+    serviceCount: number;
+    repositoryCount: number;
+    apiEndpointCount: number;
   };
-  entryPoints: GraphNode[];       // exported from index/App files
+  entryPoints: GraphNode[];
+  // TypeScript / React Native
   screens: GraphNode[];
   navigators: GraphNode[];
-  hotspots: HotspotEntry[];       // top 10 by in-degree
+  // .NET / C#
+  controllers: GraphNode[];
+  services: GraphNode[];
+  repositories: GraphNode[];
+  apiEndpoints: GraphNode[];
+  hotspots: HotspotEntry[];
   deadCodeCount: number;
-  rnStack: string[];              // dep aliases from package.json
+  /** Works for both stacks: npm dep aliases (RN) or NuGet package refs (.NET). */
+  techStack: string[];
+  /** @deprecated Use techStack. Kept for backward compatibility. */
+  rnStack: string[];
 }
 
 export interface ChangeImpact {
@@ -168,4 +196,27 @@ export interface ParsedFile {
   rawCalls: RawCallRef[];
   rawNavigates: RawNavigateRef[];
   rawRenders: RawRenderRef[];
+}
+
+// ─── Indexer options / result (shared by TS and .NET indexers) ────────────────
+
+export interface IndexOptions {
+  rootDir?: string;
+  force?: boolean;
+  quiet?: boolean;
+  onProgress?: (file: string, current: number, total: number) => void;
+}
+
+export interface IndexResult {
+  projectId: string;
+  name: string;
+  rootDir: string;
+  nodeCount: number;
+  edgeCount: number;
+  fileCount: number;
+  durationMs: number;
+  /** Screens (TS) or Controllers (.NET) — top-level navigation/entry nodes. */
+  screens: GraphNode[];
+  hotspots: Array<{ node: GraphNode; inDegree: number }>;
+  indexedAt: string;
 }

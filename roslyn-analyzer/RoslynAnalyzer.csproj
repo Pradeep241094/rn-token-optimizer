@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>rn-token-optimizer-roslyn</AssemblyName>
+    <RootNamespace>RnTokenOptimizer.Roslyn</RootNamespace>
+    <!-- Trim warnings that come from Roslyn internals -->
+    <NoWarn>IL2026;IL2072;IL2057</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+  </ItemGroup>
+
+</Project>

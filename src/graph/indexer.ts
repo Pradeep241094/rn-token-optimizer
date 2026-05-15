@@ -13,7 +13,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { parseFile, edgeId } from './parser.js';
 import { openGraphStore } from './store.js';
-import type { GraphEdge, GraphNode, ParsedFile, RawCallRef, RawNavigateRef, RawRenderRef } from './types.js';
+import type { GraphEdge, GraphNode, ParsedFile, RawCallRef, RawNavigateRef, RawRenderRef, IndexOptions, IndexResult } from './types.js';
+import { isDotNetProject } from './dotnet/detector.js';
+import { indexDotNetProject } from './dotnet/indexer.js';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -25,27 +27,9 @@ const SKIP_DIRS = new Set([
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
-// ─── Indexer options ───────────────────────────────────────────────────────────
+// ─── Indexer options / result (re-exported from types for backward compat) ─────
 
-export interface IndexOptions {
-  rootDir?: string;
-  force?: boolean;
-  quiet?: boolean;
-  onProgress?: (file: string, current: number, total: number) => void;
-}
-
-export interface IndexResult {
-  projectId: string;
-  name: string;
-  rootDir: string;
-  nodeCount: number;
-  edgeCount: number;
-  fileCount: number;
-  durationMs: number;
-  screens: GraphNode[];
-  hotspots: Array<{ node: GraphNode; inDegree: number }>;
-  indexedAt: string;
-}
+export type { IndexOptions, IndexResult } from './types.js';
 
 // ─── File walker ───────────────────────────────────────────────────────────────
 
@@ -106,7 +90,18 @@ function makeImportsEdge(sourceFileNodeId: string, targetFileNodeId: string): Gr
 // ─── Main indexer ──────────────────────────────────────────────────────────────
 
 export async function indexProject(opts: IndexOptions = {}): Promise<IndexResult> {
-  const rootDir   = opts.rootDir ?? process.cwd();
+  const rootDir = opts.rootDir ?? process.cwd();
+
+  // Route .NET projects to the Roslyn-backed indexer
+  if (isDotNetProject(rootDir)) {
+    if (!opts.quiet) {
+      process.stderr.write(
+        '[rn-token-optimizer] .NET project detected — using Roslyn graph indexer.\n',
+      );
+    }
+    return indexDotNetProject(opts);
+  }
+
   const startTime = Date.now();
 
   // Derive project metadata

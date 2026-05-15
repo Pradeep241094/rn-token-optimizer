@@ -48,16 +48,27 @@ async function cmdIndex(opts: { dir?: string; force?: boolean }): Promise<void> 
   spinner.succeed(chalk.green(`Indexed in ${result.durationMs}ms`));
   void lastFile; // suppress unused
 
+  // Detect language from the first indexed node's language field
+  const isDotNet = result.screens.length > 0 && result.screens[0].language === 'csharp';
+
   console.log('\n' + div);
   console.log(chalk.bold.cyan(`  🔍 Code Intelligence — ${result.name}`));
   console.log(div);
   console.log(`  Files indexed : ${chalk.yellow(result.fileCount)}`);
-  console.log(`  Nodes         : ${chalk.yellow(result.nodeCount)}  (functions, classes, screens, hooks…)`);
-  console.log(`  Edges         : ${chalk.yellow(result.edgeCount)}  (calls, imports, renders, navigates)`);
+  const nodeDesc = isDotNet
+    ? '(classes, methods, controllers, services…)'
+    : '(functions, classes, screens, hooks…)';
+  const edgeDesc = isDotNet
+    ? '(calls, defines, injects, implements)'
+    : '(calls, imports, renders, navigates)';
+  console.log(`  Nodes         : ${chalk.yellow(result.nodeCount)}  ${chalk.dim(nodeDesc)}`);
+  console.log(`  Edges         : ${chalk.yellow(result.edgeCount)}  ${chalk.dim(edgeDesc)}`);
   console.log(`  Duration      : ${chalk.dim(result.durationMs + 'ms')}`);
 
+  // .NET: show Controllers; RN: show Screens
   if (result.screens.length > 0) {
-    console.log(chalk.bold.cyan('\n  Screens found:'));
+    const sectionLabel = isDotNet ? 'Controllers found' : 'Screens found';
+    console.log(chalk.bold.cyan(`\n  ${sectionLabel}:`));
     for (const s of result.screens.slice(0, 8)) {
       console.log(`    ${chalk.white(s.name)}  ${chalk.dim(s.filePath + ':' + s.lineStart)}`);
     }
@@ -76,8 +87,13 @@ async function cmdIndex(opts: { dir?: string; force?: boolean }): Promise<void> 
   console.log(div + '\n');
   console.log(chalk.bold.cyan('  Next:'));
   console.log(`    rn-token-optimizer graph architecture`);
-  console.log(`    rn-token-optimizer graph search LoginScreen`);
-  console.log(`    rn-token-optimizer graph trace handleGoogleLogin --direction inbound`);
+  if (isDotNet) {
+    console.log(`    rn-token-optimizer graph search "" --label Controller`);
+    console.log(`    rn-token-optimizer graph trace GetById --direction inbound`);
+  } else {
+    console.log(`    rn-token-optimizer graph search LoginScreen`);
+    console.log(`    rn-token-optimizer graph trace handleGoogleLogin --direction inbound`);
+  }
   console.log('');
 }
 
@@ -175,44 +191,100 @@ function cmdArchitecture(opts: { dir?: string }): void {
   }
 
   console.log('\n' + div);
-  console.log(chalk.bold.cyan(`  Architecture — ${report.projectName}`));
+  const langBadge = report.projectLanguage === 'csharp'
+    ? chalk.magenta('[.NET/C#]')
+    : chalk.blue('[TypeScript]');
+  console.log(chalk.bold.cyan(`  Architecture — ${report.projectName}  ${langBadge}`));
   console.log(chalk.dim(`  Indexed: ${report.indexedAt.slice(0, 16)}`));
   console.log(div);
 
   const s = report.stats;
   console.log(`\n  ${chalk.bold('Stats')}`);
-  console.log(`  Nodes   ${chalk.yellow(s.totalNodes)}   Edges ${chalk.yellow(s.totalEdges)}`);
-  console.log(`  Files ${s.fileCount}  Functions ${s.functionCount}  Classes ${s.classCount}  Screens ${chalk.cyan(s.screenCount)}  Hooks ${chalk.cyan(s.hookCount)}`);
+  console.log(`  Nodes ${chalk.yellow(s.totalNodes)}   Edges ${chalk.yellow(s.totalEdges)}   Files ${s.fileCount}`);
 
-  if (report.rnStack.length > 0) {
-    console.log(`\n  ${chalk.bold('RN Stack')}: ${report.rnStack.join('  ')}`);
-  }
+  if (report.projectLanguage === 'csharp') {
+    // ── .NET / C# display ──────────────────────────────────────────────────────
+    console.log(
+      `  Controllers ${chalk.cyan(s.controllerCount)}` +
+      `  Services ${chalk.cyan(s.serviceCount)}` +
+      `  Repositories ${chalk.cyan(s.repositoryCount)}` +
+      `  Endpoints ${chalk.cyan(s.apiEndpointCount)}` +
+      `  Classes ${s.classCount}  Functions ${s.functionCount}`,
+    );
 
-  if (report.screens.length > 0) {
-    console.log(chalk.bold.cyan(`\n  Screens (${report.screens.length}):`));
-    for (const sc of report.screens.slice(0, 10)) {
-      console.log(`    ${chalk.white(sc.name)}  ${chalk.dim(sc.filePath)}`);
+    if (report.techStack.length > 0) {
+      console.log(`\n  ${chalk.bold('.NET Stack')}: ${report.techStack.join('  ')}`);
     }
-    if (report.screens.length > 10) console.log(chalk.dim(`    …+${report.screens.length - 10} more`));
-  }
 
-  if (report.navigators.length > 0) {
-    console.log(chalk.bold.cyan(`\n  Navigators:`));
-    for (const nav of report.navigators) {
-      console.log(`    ${chalk.white(nav.name)}  ${chalk.dim(nav.filePath)}`);
+    if (report.controllers.length > 0) {
+      console.log(chalk.bold.cyan(`\n  Controllers (${report.controllers.length}):`));
+      for (const c of report.controllers.slice(0, 10)) {
+        console.log(`    ${labelChalk('Controller')}  ${chalk.white(c.name)}  ${chalk.dim(c.filePath)}`);
+      }
+      if (report.controllers.length > 10) console.log(chalk.dim(`    …+${report.controllers.length - 10} more`));
+    }
+
+    if (report.services.length > 0) {
+      console.log(chalk.bold.cyan(`\n  Services (${report.services.length}):`));
+      for (const svc of report.services.slice(0, 8)) {
+        console.log(`    ${labelChalk('Service')}  ${chalk.white(svc.name)}  ${chalk.dim(svc.filePath)}`);
+      }
+      if (report.services.length > 8) console.log(chalk.dim(`    …+${report.services.length - 8} more`));
+    }
+
+    if (report.repositories.length > 0) {
+      console.log(chalk.bold.cyan(`\n  Repositories (${report.repositories.length}):`));
+      for (const repo of report.repositories) {
+        console.log(`    ${labelChalk('Repository')}  ${chalk.white(repo.name)}  ${chalk.dim(repo.filePath)}`);
+      }
+    }
+
+  } else {
+    // ── TypeScript / React Native display ─────────────────────────────────────
+    console.log(
+      `  Screens ${chalk.cyan(s.screenCount)}` +
+      `  Hooks ${chalk.cyan(s.hookCount)}` +
+      `  Navigators ${chalk.cyan(s.navigatorCount)}` +
+      `  Classes ${s.classCount}  Functions ${s.functionCount}`,
+    );
+
+    if (report.techStack.length > 0) {
+      console.log(`\n  ${chalk.bold('RN Stack')}: ${report.techStack.join('  ')}`);
+    }
+
+    if (report.screens.length > 0) {
+      console.log(chalk.bold.cyan(`\n  Screens (${report.screens.length}):`));
+      for (const sc of report.screens.slice(0, 10)) {
+        console.log(`    ${chalk.white(sc.name)}  ${chalk.dim(sc.filePath)}`);
+      }
+      if (report.screens.length > 10) console.log(chalk.dim(`    …+${report.screens.length - 10} more`));
+    }
+
+    if (report.navigators.length > 0) {
+      console.log(chalk.bold.cyan(`\n  Navigators:`));
+      for (const nav of report.navigators) {
+        console.log(`    ${chalk.white(nav.name)}  ${chalk.dim(nav.filePath)}`);
+      }
     }
   }
 
+  // ── Hotspots — shared ────────────────────────────────────────────────────────
   if (report.hotspots.length > 0) {
     console.log(chalk.bold.cyan('\n  Hotspots (most-called):'));
     for (const h of report.hotspots.slice(0, 8)) {
       const bar = '█'.repeat(Math.min(h.inDegree, 20));
-      console.log(`    ${chalk.white(h.node.name.padEnd(30))} ${chalk.yellow(bar)} ${chalk.dim(h.inDegree)}`);
+      console.log(
+        `    ${labelChalk(h.node.label)}  ${chalk.white(h.node.name.padEnd(28))}` +
+        `  ${chalk.yellow(bar)} ${chalk.dim(h.inDegree)}`,
+      );
     }
   }
 
   if (report.deadCodeCount > 0) {
-    console.log(`\n  ${chalk.bold('Dead code')}: ${chalk.yellow(report.deadCodeCount)} symbols with zero callers  ${chalk.dim('(run: graph dead-code)')}`);
+    console.log(
+      `\n  ${chalk.bold('Dead code')}: ${chalk.yellow(report.deadCodeCount)} symbols with zero callers` +
+      `  ${chalk.dim('(run: graph dead-code)')}`,
+    );
   }
 
   console.log('');
@@ -328,17 +400,27 @@ function cmdQuery(query: string, opts: { dir?: string }): void {
 
 function labelChalk(label: NodeLabel): string {
   const map: Record<NodeLabel, (s: string) => string> = {
-    Screen:    chalk.cyan,
-    Hook:      chalk.magenta,
-    Navigator: chalk.blue,
-    Provider:  chalk.yellow,
-    Slice:     chalk.green,
-    Component: chalk.cyan,
-    Function:  chalk.white,
-    Class:     chalk.yellow,
-    Interface: chalk.dim,
-    Type:      chalk.dim,
-    File:      chalk.dim,
+    // React Native
+    Screen:      chalk.cyan,
+    Hook:        chalk.magenta,
+    Navigator:   chalk.blue,
+    Provider:    chalk.yellow,
+    Slice:       chalk.green,
+    Component:   chalk.cyan,
+    // Shared
+    Function:    chalk.white,
+    Class:       chalk.yellow,
+    Interface:   chalk.dim,
+    Type:        chalk.dim,
+    File:        chalk.dim,
+    // .NET / C#
+    Controller:  chalk.cyan,
+    Service:     chalk.green,
+    Repository:  chalk.blue,
+    Middleware:  chalk.magenta,
+    ApiEndpoint: chalk.white,
+    ViewModel:   chalk.yellow,
+    Namespace:   chalk.dim,
   };
   return (map[label] ?? chalk.white)(`[${label}]`);
 }

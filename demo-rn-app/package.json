@@ -1,0 +1,21 @@
+{
+  "name": "demo-rn-app",
+  "version": "1.0.0",
+  "description": "Demo React Native e-commerce app — used to showcase rn-token-optimizer graph explorer",
+  "private": true,
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "@react-navigation/native": "^6.1.9",
+    "@react-navigation/stack": "^6.3.20",
+    "@react-navigation/bottom-tabs": "^6.5.11",
+    "@reduxjs/toolkit": "^2.0.1",
+    "react-redux": "^9.0.4",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/react": "^18.2.45",
+    "@types/react-native": "^0.73.0"
+  }
+}

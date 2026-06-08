@@ -23,6 +23,7 @@ A React Native–focused token optimizer that compresses your AI prompts and ter
 15. [All CLI Commands](#15-all-cli-commands)
 16. [Configuration Reference](#16-configuration-reference)
 17. [Troubleshooting](#17-troubleshooting)
+18. [Visual Graph Sandbox (Feature D)](#18-visual-graph-sandbox-feature-d)
 
 ---
 
@@ -907,6 +908,17 @@ rn-token-optimizer dsl learn-thread      Extract candidates from transcript via 
 rn-token-optimizer dsl promote           Promote eligible candidates
 rn-token-optimizer dsl pin <key>         Pin an alias (prevent pruning)
 rn-token-optimizer dsl prune             Remove stale entries
+rn-token-optimizer graph index           Full AST index of the project
+rn-token-optimizer graph search <pat>    Search nodes by name
+rn-token-optimizer graph trace <name>    Trace call chain for a function
+rn-token-optimizer graph architecture    Codebase overview
+rn-token-optimizer graph dead-code       Zero-callers detection
+rn-token-optimizer graph changes         Git diff → affected symbols
+rn-token-optimizer graph snippet <name>  Print source for a qualified name
+rn-token-optimizer graph query <query>   Cypher-lite structural query
+rn-token-optimizer graph semantic <q>    TF-IDF concept search
+rn-token-optimizer graph watch           Real-time incremental re-indexing daemon
+rn-token-optimizer graph ui              Launch visual graph dashboard in browser
 ```
 
 ### Global flags
@@ -1054,6 +1066,71 @@ Add `.rn-token-optimizer/` to your `.gitignore` to avoid committing your persona
 ### tiktoken native binding warning
 
 On some systems `tiktoken` may fail to load its native module. The tool falls back to a character-based approximation (1 token ≈ 4 chars), which is accurate to within ~5%. No action needed.
+
+---
+
+## 18. Visual Graph Sandbox (Feature D)
+
+Launch a full interactive graph dashboard in your browser — no npm, no bundler, no external packages.
+
+### Step 1 — Index your project first
+
+```bash
+cd /path/to/your-project
+rn-token-optimizer graph index
+```
+
+### Step 2 — Launch the dashboard
+
+```bash
+rn-token-optimizer graph ui
+```
+
+This starts a local HTTP server (default port **7842**) and auto-opens your browser.
+
+```
+✔ Graph Sandbox running at http://localhost:7842
+
+  Project : /path/to/your-project
+  API     : http://localhost:7842/api/graph
+  Search  : http://localhost:7842/api/search?q=<query>
+
+  Press Ctrl+C to stop the server.
+```
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Force-directed graph** | Nodes laid out with spring physics; drag to reposition |
+| **Label filter pills** | Toggle Screen, Hook, Function, Class, Navigator, etc. on/off |
+| **Live semantic search** | Type any concept — TF-IDF highlights matching nodes instantly |
+| **Node detail panel** | Click any node to see file, line range, callers, callees, source snippet |
+| **Scroll to zoom / drag to pan** | Full canvas navigation |
+| **Dark glassmorphism UI** | Premium dark design, label-colored nodes |
+
+### Options
+
+```bash
+rn-token-optimizer graph ui --port 9000       # use a different port
+rn-token-optimizer graph ui --no-open         # don't auto-open browser
+rn-token-optimizer graph ui --dir ./myapp     # target a different directory
+```
+
+### REST API endpoints
+
+The server also exposes a JSON API you can query directly:
+
+```bash
+# Full graph (nodes + edges)
+curl http://localhost:7842/api/graph | jq '.nodes | length'
+
+# Semantic search
+curl "http://localhost:7842/api/search?q=authentication&limit=5"
+
+# Node detail
+curl http://localhost:7842/api/node/<nodeId>
+```
 
 ---
 

@@ -18,7 +18,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { indexProject } from '../../graph/indexer.js';
-import { searchGraph, traceCallPath, getArchitecture, detectChanges, findDeadCode, getCodeSnippet, simpleQueryGraph } from '../../graph/query.js';
+import { searchGraph, traceCallPath, getArchitecture, detectChanges, findDeadCode, getCodeSnippet, simpleQueryGraph, searchGraphTfIdf } from '../../graph/query.js';
+import { startWatcher } from '../../graph/watcher.js';
+import { startUiServer } from '../../graph/ui/server.js';
 import type { NodeLabel } from '../../graph/types.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -396,6 +398,100 @@ function cmdQuery(query: string, opts: { dir?: string }): void {
   console.log(chalk.dim(`\n${result.rows.length} rows`));
 }
 
+// ─── graph semantic ──────────────────────────────────────────────────────────
+
+async function cmdSemantic(query: string, opts: { limit?: number; dir?: string }): Promise<void> {
+  const rootDir = resolveRoot(opts.dir);
+  const spinner = ora({ text: `Calculating TF-IDF vectors & matching concept "${query}" …`, stream: process.stderr }).start();
+
+  try {
+    const results = await searchGraphTfIdf(query, opts.limit ?? 5, rootDir);
+    spinner.stop();
+
+    if (results.length === 0) {
+      console.log(chalk.yellow(`No conceptual matches for "${query}"`));
+      return;
+    }
+
+    console.log('\n' + div);
+    console.log(chalk.bold.cyan(`  Semantic Match: "${query}"  (${results.length} results)`));
+    console.log(div);
+
+    for (const r of results) {
+      const labelColor = labelChalk(r.node.label);
+      console.log(
+        `  ${labelColor}  ${chalk.white(r.node.name)}` +
+        `  ${chalk.dim(`[relevance: ${r.score.toFixed(4)}]`)}` +
+        `\n     ${chalk.dim(r.node.filePath + ':' + r.node.lineStart)}` +
+        `  ${chalk.dim(r.node.signature)}`
+      );
+    }
+    console.log('');
+  } catch (err) {
+    spinner.fail(chalk.red('Failed to perform semantic search'));
+    console.error(err);
+  }
+}
+
+// ─── graph ui ────────────────────────────────────────────────────────────────
+
+async function cmdUi(opts: { port?: string; open?: boolean; dir?: string }): Promise<void> {
+  const rootDir = resolveRoot(opts.dir);
+  const port    = parseInt(opts.port ?? '7842', 10);
+  const autoOpen = opts.open !== false;
+  const url     = `http://localhost:${port}`;
+
+  const spinner = ora({ text: `Starting graph sandbox on ${chalk.cyan(url)} …`, stream: process.stderr }).start();
+
+  try {
+    await startUiServer({ rootDir, port, autoOpen });
+    spinner.succeed(chalk.green(`Graph Sandbox running at ${chalk.bold.cyan(url)}`));
+    console.log('');
+    console.log(`  ${chalk.bold('Project')} : ${chalk.white(rootDir)}`);
+    console.log(`  ${chalk.bold('API')}     : ${chalk.dim(url + '/api/graph')}`);
+    console.log(`  ${chalk.bold('Search')}  : ${chalk.dim(url + '/api/search?q=<query>')}`);
+    console.log('');
+    console.log(chalk.dim('  Press Ctrl+C to stop the server.'));
+    console.log('');
+
+    // Keep process alive
+    process.on('SIGINT', () => {
+      console.log(chalk.yellow('\n  Stopping graph sandbox…'));
+      process.exit(0);
+    });
+
+    // Block indefinitely
+    await new Promise<void>(() => {});
+  } catch (err) {
+    spinner.fail(chalk.red('Failed to start graph sandbox'));
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red('  ' + msg));
+    process.exit(1);
+  }
+}
+
+// ─── graph watch ─────────────────────────────────────────────────────────────
+
+function cmdWatch(opts: { dir?: string }): void {
+  const rootDir = resolveRoot(opts.dir);
+  console.log(chalk.green('Initializing Watcher Daemon...'));
+
+  const watcher = startWatcher(rootDir, (relPath, action) => {
+    if (action === 'added_or_modified') {
+      console.log(chalk.green(`[Watcher CLI] Incrementally indexed: ${relPath}`));
+    } else {
+      console.log(chalk.yellow(`[Watcher CLI] Removed indexing for: ${relPath}`));
+    }
+  });
+
+  process.on('SIGINT', () => {
+    console.log(chalk.yellow('\n[Watcher CLI] Stopping watcher daemon...'));
+    watcher.close();
+    process.exit(0);
+  });
+}
+
+
 // ─── Label colour helper ──────────────────────────────────────────────────────
 
 function labelChalk(label: NodeLabel): string {
@@ -502,5 +598,32 @@ export function registerGraphCommand(program: Command): void {
     .option('--dir <path>', 'Project root directory')
     .action((query: string, opts: { dir?: string }) => {
       cmdQuery(query, opts);
+    });
+
+  graph
+    .command('semantic <query>')
+    .description('Conceptual codebase search using pure TS TF-IDF token matching')
+    .option('--limit <n>', 'Max results (default 5)', '5')
+    .option('--dir <path>', 'Project root directory')
+    .action(async (query: string, opts: { limit?: string; dir?: string }) => {
+      await cmdSemantic(query, { ...opts, limit: opts.limit ? parseInt(opts.limit, 10) : undefined });
+    });
+
+  graph
+    .command('watch')
+    .description('Start the real-time incremental re-indexing watcher daemon')
+    .option('--dir <path>', 'Project root directory')
+    .action((opts: { dir?: string }) => {
+      cmdWatch(opts);
+    });
+
+  graph
+    .command('ui')
+    .description('Launch the interactive graph visualization dashboard in your browser')
+    .option('--port <n>', 'Port to serve on (default: 7842)', '7842')
+    .option('--no-open', 'Do not auto-open the browser')
+    .option('--dir <path>', 'Project root directory')
+    .action(async (opts: { port?: string; open?: boolean; dir?: string }) => {
+      await cmdUi(opts);
     });
 }

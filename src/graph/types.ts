@@ -100,6 +100,11 @@ export interface SearchResult {
   calleeCount: number;
 }
 
+export interface SemanticSearchResult {
+  node: GraphNode;
+  score: number;
+}
+
 export interface TraceNode {
   node: GraphNode;
   depth: number;

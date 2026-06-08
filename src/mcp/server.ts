@@ -20,6 +20,7 @@ import {
   findDeadCode,
   getCodeSnippet,
   simpleQueryGraph,
+  searchGraphTfIdf,
 } from '../graph/query.js';
 import { createAnthropicProvider } from '../llm/anthropic.js';
 import {
@@ -253,6 +254,23 @@ export const TOOLS: Tool[] = [
         rootDir: { type: 'string', description: 'Absolute path to the project root (default: cwd)' },
         force:   { type: 'boolean', description: 'Re-index even if a graph already exists' },
       },
+    },
+  },
+  {
+    name: 'semantic_search_graph',
+    description:
+      'Search the knowledge graph semantically using TF-IDF term ranking. ' +
+      'Finds components, functions, hooks, and files matching conceptual queries (e.g. "auth helper" or "cart slice") ' +
+      'even if you do not know the exact symbol name. ' +
+      'Returns a list of matching nodes sorted by relevance score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The conceptual or natural language query (e.g. "google auth handler")' },
+        limit: { type: 'number', description: 'Max results (default: 5)' },
+        root_dir: { type: 'string', description: 'Project root (default: cwd)' },
+      },
+      required: ['query'],
     },
   },
   {
@@ -628,6 +646,26 @@ export async function callTool(name: string, a: Record<string, unknown>): Promis
               `Indexed "${result.name}": ${result.fileCount} files, ${result.nodeCount} nodes, ` +
               `${result.edgeCount} edges in ${result.durationMs}ms. ` +
               `Use search_graph, trace_call_path, or get_architecture for structural queries.`,
+          });
+        }
+
+        // ── semantic_search_graph ─────────────────────────────────────────────
+        case 'semantic_search_graph': {
+          const rootDir = a.root_dir ? str(a.root_dir) : process.cwd();
+          const limit = typeof a.limit === 'number' ? a.limit : 5;
+          const queryText = str(a.query);
+          
+          const results = await searchGraphTfIdf(queryText, limit, rootDir);
+          return ok({
+            count: results.length,
+            results: results.map(r => ({
+              name: r.node.name,
+              label: r.node.label,
+              qualified_name: r.node.qualifiedName,
+              file: r.node.filePath + ':' + r.node.lineStart,
+              signature: r.node.signature,
+              score: Number(r.score.toFixed(4)),
+            })),
           });
         }
 

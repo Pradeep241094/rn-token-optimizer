@@ -1,7 +1,7 @@
 {
   "name": "rn-token-optimizer",
-  "version": "1.0.0",
-  "description": "AST code graph + prompt optimizer + MCP server for React Native AI coding agents. Indexes your project into a persistent knowledge graph, compresses prompts and terminal output up to 99%, and exposes 18 MCP tools for Cursor, Kiro, and Claude Desktop.",
+  "version": "1.1.0",
+  "description": "AST code graph + TF-IDF semantic search + visual explorer + prompt optimizer + MCP server for React Native and .NET AI coding agents. Indexes your project into a persistent knowledge graph, compresses prompts and terminal output up to 99%, and exposes 19 MCP tools for Cursor, Kiro, and Claude Desktop.",
   "keywords": [
     "react-native",
     "token-optimizer",

@@ -118,6 +118,27 @@ export class GraphStore {
     this.db.prepare('DELETE FROM edges WHERE project_id = ?').run(this.projectId);
   }
 
+  deleteFileNodesAndEdges(filePath: string): void {
+    const nodeIds = this.db.prepare(
+      'SELECT id FROM nodes WHERE project_id = ? AND file_path = ?'
+    ).all(this.projectId, filePath).map(row => (row as any).id);
+
+    this.db.transaction(() => {
+      if (nodeIds.length > 0) {
+        const deleteEdgeStmt = this.db.prepare(
+          'DELETE FROM edges WHERE project_id = ? AND (source_id = ? OR target_id = ?)'
+        );
+        const deleteNodeStmt = this.db.prepare(
+          'DELETE FROM nodes WHERE project_id = ? AND id = ?'
+        );
+        for (const id of nodeIds) {
+          deleteEdgeStmt.run(this.projectId, id, id);
+          deleteNodeStmt.run(this.projectId, id);
+        }
+      }
+    })();
+  }
+
   batchUpsertNodes(nodes: GraphNode[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO nodes(id, project_id, label, name, qualified_name, file_path,
@@ -346,6 +367,27 @@ export class GraphStore {
       'SELECT COUNT(*) AS cnt FROM edges WHERE project_id = ?'
     ).get(this.projectId) as { cnt: number };
     return row.cnt;
+  }
+
+  // ── Bulk graph export (for UI visualisation) ───────────────────────────────
+
+  /**
+   * Return all nodes (excluding File nodes) and all edges for visualisation.
+   * Capped at 2 000 nodes / 4 000 edges to keep the browser responsive.
+   */
+  getAllNodesAndEdges(): {
+    nodes: Array<Record<string, unknown>>;
+    edges: Array<Record<string, unknown>>;
+  } {
+    const nodes = this.db.prepare(
+      `SELECT * FROM nodes WHERE project_id = ? AND label != 'File' LIMIT 2000`
+    ).all(this.projectId) as Array<Record<string, unknown>>;
+
+    const edges = this.db.prepare(
+      `SELECT * FROM edges WHERE project_id = ? LIMIT 4000`
+    ).all(this.projectId) as Array<Record<string, unknown>>;
+
+    return { nodes, edges };
   }
 
   // ── File-scoped node resolution ────────────────────────────────────────────

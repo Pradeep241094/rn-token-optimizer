@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { ILLMProvider, ILLMMessage, AnthropicModel } from '../types/index.js';
+import { createLLMProvider } from './provider.js';
 
 export class AnthropicProvider implements ILLMProvider {
   readonly model: string;
@@ -37,15 +38,8 @@ export class AnthropicProvider implements ILLMProvider {
 export function createAnthropicProvider(
   apiKeyOrEnv?: string,
   model?: AnthropicModel,
-): AnthropicProvider {
-  const key = apiKeyOrEnv ?? process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    throw new Error(
-      'ANTHROPIC_API_KEY is not set. Run `rn-token-optimizer` to complete onboarding ' +
-        'or set the ANTHROPIC_API_KEY environment variable.',
-    );
-  }
-  return new AnthropicProvider(key, model);
+): ILLMProvider {
+  return createLLMProvider(apiKeyOrEnv, model);
 }
 
 export const AVAILABLE_MODELS: Array<{ value: AnthropicModel; name: string }> = [

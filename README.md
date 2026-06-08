@@ -14,7 +14,7 @@
 
 | Pillar | What you get |
 |--------|-------------|
-| **Code Intelligence Graph** | Indexes every `.ts/.tsx/.js/.jsx` **and `.cs/.vb/.fs`** file into a persistent SQLite knowledge graph. 18 MCP tools let your IDE answer "who calls this?", "show all controllers", "what does my git diff break?" without reading a single file |
+| **Code Intelligence Graph** | Indexes every `.ts/.tsx/.js/.jsx` **and `.cs/.vb/.fs`** file into a persistent SQLite knowledge graph. 19 MCP tools let your IDE answer "who calls this?", "find auth-related code", "what does my git diff break?" without reading a single file |
 | **Roslyn .NET Support** | C# projects are parsed with **Microsoft Roslyn** — the same compiler that powers Visual Studio. Controllers, Services, Repositories, ApiEndpoints, and DI injection chains are detected automatically |
 | **Prompt Optimization** | Compresses verbose natural-language prompts into a Military-English DSL before they reach the LLM — typically **70–90% fewer tokens** |
 | **Terminal Compression** | Pipes Metro/Jest/dotnet build output through Claude and returns a 3-line DSL answer — typically **95–99% fewer tokens** |
@@ -213,7 +213,40 @@ rn-token-optimizer graph snippet "src/screens/Login.tsx:handleAuth"
 
 # Cypher-lite structural queries
 rn-token-optimizer graph query "MATCH (n:Screen) RETURN n.name, n.file_path LIMIT 20"
+
+# Semantic search — find code by concept (TF-IDF), not exact name
+rn-token-optimizer graph semantic "authentication flow"
+rn-token-optimizer graph semantic "payment checkout error" --limit 10
 ```
+
+### Visual graph explorer
+
+Open an interactive browser dashboard — every dot is a symbol, every line is a call relationship:
+
+```bash
+rn-token-optimizer graph index
+rn-token-optimizer graph ui              # → http://localhost:7842
+rn-token-optimizer graph ui --port 9000 --dir ./src
+```
+
+While running, the explorer exposes a REST API:
+
+```bash
+curl http://localhost:7842/api/graph
+curl "http://localhost:7842/api/search?q=checkout&limit=5"
+curl http://localhost:7842/api/node/<nodeId>
+```
+
+### Live file watcher
+
+Keep the graph current as you edit — incremental re-index on every save:
+
+```bash
+rn-token-optimizer graph watch           # Terminal 1
+rn-token-optimizer graph ui              # Terminal 2
+```
+
+> **Full walkthrough:** see [GUIDE.md](./GUIDE.md) and the bundled [`demo-rn-app/`](./demo-rn-app/) sample project.
 
 ### Token efficiency
 
@@ -232,6 +265,7 @@ Once the MCP server is running in Cursor or Kiro, just ask in chat:
 "Index my project"                    → runs index_repository
 "Show my app architecture"            → runs get_architecture
 "Find all screens"                    → runs search_graph {label: "Screen"}
+"Find all auth-related code"          → runs semantic_search_graph {query: "authentication"}
 "Who calls handleGoogleLogin?"        → runs trace_call_path {direction: "inbound"}
 "Show dead code"                      → runs find_dead_code
 "What does my current diff break?"    → runs detect_changes
@@ -591,7 +625,7 @@ Reload your IDE window after adding the config (`Cmd+Shift+P` → `Reload Window
 Every MCP tool can be called directly from the terminal — no IDE needed.
 
 ```bash
-# List all 18 available tools
+# List all 19 available tools
 rn-token-optimizer-mcp list
 
 # Code intelligence
@@ -815,6 +849,11 @@ rn-token-optimizer graph dead-code              Zero-callers detection
 rn-token-optimizer graph changes                Git diff → blast radius
 rn-token-optimizer graph snippet <qualified>    Print source for a function
 rn-token-optimizer graph query "<cypher-lite>"  Structural query
+rn-token-optimizer graph semantic <query>       TF-IDF concept search
+rn-token-optimizer graph semantic <q> --limit 10
+rn-token-optimizer graph ui                     Visual graph explorer (port 7842)
+rn-token-optimizer graph ui --port 9000 --no-open --dir ./src
+rn-token-optimizer graph watch                  Live incremental re-indexer
 
 rn-token-optimizer slash                        Get system prompt for agent thread
 rn-token-optimizer slash --project "MyApp"
@@ -840,7 +879,7 @@ rn-token-optimizer onboard                      Re-run first-time wizard
 
 ## All MCP Tools
 
-18 tools available to your IDE agent:
+19 tools available to your IDE agent:
 
 ### Code Intelligence
 
@@ -848,6 +887,7 @@ rn-token-optimizer onboard                      Re-run first-time wizard
 |------|-------------|
 | `index_repository` | Full AST index — auto-detects TypeScript/React Native or .NET/C# and picks the right parser. Persists to SQLite. Run once per session. |
 | `search_graph` | Search nodes by `name_pattern`, `label`, `file_pattern`. Supports all RN labels (`Screen`, `Hook`, …) and .NET labels (`Controller`, `Service`, `Repository`, `ApiEndpoint`, …). |
+| `semantic_search_graph` | TF-IDF concept search — find symbols by meaning (e.g. `"auth flow"`, `"payment error"`) without knowing exact names. Returns ranked results with relevance scores. |
 | `trace_call_path` | BFS call chain. `direction`: inbound/outbound/both. `depth` 1–5. Works for both TS and C# call graphs. |
 | `get_architecture` | One-call overview: entry points, hotspots by in-degree, dead code count, stack aliases. |
 | `detect_changes` | Accepts raw `git diff` text, maps lines → symbols → blast radius, returns risk-classified impact list. |

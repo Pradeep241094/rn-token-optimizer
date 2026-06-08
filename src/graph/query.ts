@@ -19,6 +19,7 @@ import { openGraphStore } from './store.js';
 import type {
   SearchOptions,
   SearchResult,
+  SemanticSearchResult,
   TraceResult,
   TraceNode,
   ArchitectureReport,
@@ -28,6 +29,7 @@ import type {
   EdgeType,
 } from './types.js';
 import crypto from 'node:crypto';
+import { TfIdfEngine } from './tfidf.js';
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
@@ -610,3 +612,20 @@ function executeQuery(query: string, store: ReturnType<typeof openGraphStore>): 
 
   return { columns: ['error'], rows: [{ error: 'Unsupported query syntax. Use: MATCH (n:Label) RETURN n.name LIMIT 10' }] };
 }
+
+// ─── searchGraphTfIdf ──────────────────────────────────────────────────────────
+
+export function searchGraphTfIdf(queryText: string, limit = 5, rootDir = process.cwd()): SemanticSearchResult[] {
+  const store = openGraphStore(rootDir, projectId(rootDir));
+  try {
+    const project = store.getProject();
+    if (!project) return [];
+
+    const nodes = store.searchNodes({ limit: 10000 }); // Load nodes
+    const engine = new TfIdfEngine(nodes.map(r => r.node), rootDir);
+    return engine.search(queryText, limit);
+  } finally {
+    store.close();
+  }
+}
+

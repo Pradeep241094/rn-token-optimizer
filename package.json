@@ -25,7 +25,7 @@
   "author": "Pradeep Margasahayam Prakash <https://github.com/Pradeep241094>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Pradeep241094/rn-token-optimizer.git"
+    "url": "git+https://github.com/Pradeep241094/rn-token-optimizer.git"
   },
   "homepage": "https://github.com/Pradeep241094/rn-token-optimizer#readme",
   "bugs": {

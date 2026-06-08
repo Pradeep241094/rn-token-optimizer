@@ -1,6 +1,6 @@
 # rn-token-optimizer
 
-> **AST code graph · prompt optimizer · terminal compressor · MCP server**
+> **AST code graph · TF-IDF search · visual explorer · prompt optimizer · terminal compressor · MCP server**
 > Built for React Native and .NET AI coding workflows in Cursor, Kiro, and Claude Desktop.
 
 [![npm version](https://img.shields.io/npm/v/rn-token-optimizer.svg)](https://www.npmjs.com/package/rn-token-optimizer)
@@ -15,6 +15,9 @@
 | Pillar | What you get |
 |--------|-------------|
 | **Code Intelligence Graph** | Indexes every `.ts/.tsx/.js/.jsx` **and `.cs/.vb/.fs`** file into a persistent SQLite knowledge graph. 19 MCP tools let your IDE answer "who calls this?", "find auth-related code", "what does my git diff break?" without reading a single file |
+| **Semantic Search (TF-IDF)** | Find code by **concept** — `"auth flow"`, `"payment error"` — without knowing exact symbol names. Works in CLI, MCP, and the visual explorer |
+| **Visual Graph Explorer** | `rn-token-optimizer graph ui` opens **http://localhost:7842** — a force-directed browser dashboard. Click any node to see source, callers, and callees. Zero external deps |
+| **Live File Watcher** | `graph watch` re-indexes on every save so the graph stays current while you code |
 | **Roslyn .NET Support** | C# projects are parsed with **Microsoft Roslyn** — the same compiler that powers Visual Studio. Controllers, Services, Repositories, ApiEndpoints, and DI injection chains are detected automatically |
 | **Prompt Optimization** | Compresses verbose natural-language prompts into a Military-English DSL before they reach the LLM — typically **70–90% fewer tokens** |
 | **Terminal Compression** | Pipes Metro/Jest/dotnet build output through Claude and returns a 3-line DSL answer — typically **95–99% fewer tokens** |
@@ -74,6 +77,32 @@ rn-token-optimizer setup
 curl -fsSL https://raw.githubusercontent.com/prmargas/rn-token-optimizer/main/install.sh | bash
 ```
 
+### Visual graph explorer (60 seconds)
+
+Index your project, then open the browser dashboard:
+
+```bash
+npm install -g rn-token-optimizer
+cd /path/to/your-project
+
+rn-token-optimizer graph index          # build SQLite graph (~300ms for typical RN apps)
+rn-token-optimizer graph ui             # → http://localhost:7842 (auto-opens browser)
+```
+
+Try the bundled demo app:
+
+```bash
+git clone https://github.com/Pradeep241094/rn-token-optimizer
+cd rn-token-optimizer
+npm install && npm run build && npm link
+
+rn-token-optimizer graph index --dir ./demo-rn-app
+rn-token-optimizer graph ui --dir ./demo-rn-app
+# 122 nodes · 220 edges · 7 screens — search "login auth" in the sidebar
+```
+
+> Full explorer reference: [Feature 1c — Visual Graph Explorer](#feature-1c--visual-graph-explorer) · [GUIDE.md](./GUIDE.md)
+
 ---
 
 ## Table of Contents
@@ -87,24 +116,28 @@ curl -fsSL https://raw.githubusercontent.com/prmargas/rn-token-optimizer/main/in
    - [Node labels](#net-node-labels)
    - [Edge types](#net-edge-types)
    - [Querying a .NET graph](#querying-a-net-graph)
-4. [Feature 2 — Prompt Optimization](#feature-2--prompt-optimization)
-5. [Feature 3 — Terminal Output Compression](#feature-3--terminal-output-compression)
-6. [Feature 4 — MCP Server for IDEs](#feature-4--mcp-server-for-ides)
-7. [Feature 5 — MCP CLI Mode](#feature-5--mcp-cli-mode)
-8. [Feature 6 — DSL System](#feature-6--dsl-system)
-9. [Feature 7 — Project Index & Steering Doc](#feature-7--project-index--steering-doc)
-10. [Feature 8 — Token Stats (offline)](#feature-8--token-stats-offline)
-11. [Full CLI Reference](#full-cli-reference)
-12. [All MCP Tools](#all-mcp-tools)
-13. [Programmatic API](#programmatic-api)
-14. [Configuration](#configuration)
-15. [How Passthrough Mode Works](#how-passthrough-mode-works)
-16. [Sample Projects](#sample-projects)
+3. [Feature 1a — Semantic Search (TF-IDF)](#feature-1a--semantic-search-tfidf)
+4. [Feature 1c — Visual Graph Explorer](#feature-1c--visual-graph-explorer)
+5. [Feature 1d — Live File Watcher](#feature-1d--live-file-watcher)
+6. [Feature 2 — Prompt Optimization](#feature-2--prompt-optimization)
+7. [Feature 3 — Terminal Output Compression](#feature-3--terminal-output-compression)
+8. [Feature 4 — MCP Server for IDEs](#feature-4--mcp-server-for-ides)
+9. [Feature 5 — MCP CLI Mode](#feature-5--mcp-cli-mode)
+10. [Feature 6 — DSL System](#feature-6--dsl-system)
+11. [Feature 7 — Project Index & Steering Doc](#feature-7--project-index--steering-doc)
+12. [Feature 8 — Token Stats (offline)](#feature-8--token-stats-offline)
+13. [Full CLI Reference](#full-cli-reference)
+14. [All MCP Tools](#all-mcp-tools)
+15. [Programmatic API](#programmatic-api)
+16. [Configuration](#configuration)
+17. [How Passthrough Mode Works](#how-passthrough-mode-works)
+18. [Sample Projects](#sample-projects)
+    - [React Native Demo App](#react-native-demo-app-sample)
     - [.NET Todo List API](#net-todo-list-api-sample)
     - [Project structure](#sample-project-structure)
     - [Example usage](#example-usage)
     - [What the graph looks like](#what-the-graph-looks-like)
-17. [License](#license)
+19. [License](#license)
 
 ---
 
@@ -213,40 +246,17 @@ rn-token-optimizer graph snippet "src/screens/Login.tsx:handleAuth"
 
 # Cypher-lite structural queries
 rn-token-optimizer graph query "MATCH (n:Screen) RETURN n.name, n.file_path LIMIT 20"
-
-# Semantic search — find code by concept (TF-IDF), not exact name
-rn-token-optimizer graph semantic "authentication flow"
-rn-token-optimizer graph semantic "payment checkout error" --limit 10
 ```
 
-### Visual graph explorer
+### Semantic search, visual explorer, and live watcher
 
-Open an interactive browser dashboard — every dot is a symbol, every line is a call relationship:
+| Capability | CLI command | Documentation |
+|------------|-------------|---------------|
+| **Concept search (TF-IDF)** | `graph semantic "authentication flow"` | [Feature 1a](#feature-1a--semantic-search-tfidf) |
+| **Visual graph explorer** | `graph ui` → http://localhost:7842 | [Feature 1c](#feature-1c--visual-graph-explorer) |
+| **Live re-index on save** | `graph watch` | [Feature 1d](#feature-1d--live-file-watcher) |
 
-```bash
-rn-token-optimizer graph index
-rn-token-optimizer graph ui              # → http://localhost:7842
-rn-token-optimizer graph ui --port 9000 --dir ./src
-```
-
-While running, the explorer exposes a REST API:
-
-```bash
-curl http://localhost:7842/api/graph
-curl "http://localhost:7842/api/search?q=checkout&limit=5"
-curl http://localhost:7842/api/node/<nodeId>
-```
-
-### Live file watcher
-
-Keep the graph current as you edit — incremental re-index on every save:
-
-```bash
-rn-token-optimizer graph watch           # Terminal 1
-rn-token-optimizer graph ui              # Terminal 2
-```
-
-> **Full walkthrough:** see [GUIDE.md](./GUIDE.md) and the bundled [`demo-rn-app/`](./demo-rn-app/) sample project.
+> **Full walkthrough:** [GUIDE.md](./GUIDE.md) · bundled [`demo-rn-app/`](./demo-rn-app/) sample
 
 ### Token efficiency
 
@@ -454,6 +464,106 @@ rn-token-optimizer graph query "MATCH (n:Service)-[e:INJECTS]->(m) RETURN n.name
 
 ---
 
+## Feature 1a — Semantic Search (TF-IDF)
+
+Find code by **concept**, not exact symbol name. The TF-IDF engine tokenises every indexed node (name, path, signature) and ranks matches by cosine similarity.
+
+```bash
+rn-token-optimizer graph semantic "authentication flow"
+rn-token-optimizer graph semantic "payment checkout error" --limit 10
+
+# Example output:
+# [Hook]     useAuth          relevance: 0.94   hooks/useAuth.ts:12
+# [Function] handleLogin      relevance: 0.87   screens/LoginScreen.tsx:45
+# [Service]  AuthService      relevance: 0.82   services/AuthService.ts:1
+```
+
+Also available via MCP (`semantic_search_graph`) and in the visual explorer search sidebar while `graph ui` is running.
+
+---
+
+## Feature 1c — Visual Graph Explorer
+
+An interactive **browser dashboard** for your codebase — no npm bundler, no external packages. Every **dot** is a function, class, hook, or screen; every **line** is a call relationship.
+
+### Launch
+
+```bash
+rn-token-optimizer graph index          # required first (or --force to rebuild)
+rn-token-optimizer graph ui             # opens http://localhost:7842
+
+# Options
+rn-token-optimizer graph ui --port 9000       # custom port
+rn-token-optimizer graph ui --no-open         # don't auto-open browser
+rn-token-optimizer graph ui --dir ./src       # target a subdirectory
+```
+
+**Expected CLI output:**
+
+```
+✔ Graph Sandbox running at http://localhost:7842
+
+  Project : /path/to/your-project
+  API     : http://localhost:7842/api/graph
+  Search  : http://localhost:7842/api/search?q=<query>
+
+  Press Ctrl+C to stop the server.
+```
+
+### What you see
+
+| UI area | What it does |
+|---------|--------------|
+| **Force-directed canvas** | Spring-physics graph — scroll to zoom, drag to pan, drag nodes to reposition |
+| **Filter pills** | Toggle node types: Screen, Hook, Function, Class, Navigator, Controller, Service… |
+| **Search sidebar** | TF-IDF concept search — type `"auth"`, `"checkout"`, matching nodes glow in the graph |
+| **Detail panel** | Click any node → file path, line range, callers, callees, inline source snippet |
+| **Legend / How to use** | Header buttons explain node colours and navigation |
+
+### Node colours
+
+| Colour | Type | Meaning |
+|--------|------|---------|
+| Cyan | **Screen** | React Native full-page view |
+| Violet | **Hook** | Custom React hook (`useXxx`) |
+| Slate | **Function** | TypeScript / JavaScript function |
+| Amber | **Class** | Class or C# type |
+| Blue | **Navigator** | React Navigation stack / tab |
+| Orange | **Provider** | React Context provider |
+| Green | **Service** | .NET service class |
+
+### REST API (while `graph ui` is running)
+
+```bash
+curl http://localhost:7842/api/graph | jq '.nodes | length'
+curl "http://localhost:7842/api/search?q=checkout&limit=10"
+curl http://localhost:7842/api/node/<nodeId>
+```
+
+### Try the demo app
+
+```bash
+rn-token-optimizer graph index --dir ./demo-rn-app
+rn-token-optimizer graph ui --dir ./demo-rn-app --port 7843
+# Search sidebar: "login auth" · "payment checkout" · "api token refresh"
+```
+
+---
+
+## Feature 1d — Live File Watcher
+
+Keeps the graph current as you edit — uses native `fs.watch` (zero external dependencies). When a `.ts`, `.tsx`, `.js`, or `.cs` file changes, only that file is re-parsed and updated in SQLite.
+
+```bash
+# Terminal 1 — watcher daemon
+rn-token-optimizer graph watch
+
+# Terminal 2 — visual explorer (refresh browser after saves)
+rn-token-optimizer graph ui
+```
+
+---
+
 ## Feature 2 — Prompt Optimization
 
 Compress verbose natural-language prompts before they reach an LLM.
@@ -572,8 +682,15 @@ The IDE calls `optimize_prompt` automatically, shows the token savings report, t
 "Show my app architecture"
 "Who calls handleGoogleLogin?"
 "Find all screens in my app"
+"Find all auth-related code"              → semantic_search_graph
 "What does my current git diff break?"
 "Show functions with no callers"
+```
+
+**Visual explorer** — run locally, then browse:
+```bash
+rn-token-optimizer graph index
+rn-token-optimizer graph ui               # http://localhost:7842
 ```
 
 **Terminal compression** — paste output and ask:
@@ -632,6 +749,7 @@ rn-token-optimizer-mcp list
 rn-token-optimizer-mcp index_repository
 rn-token-optimizer-mcp get_architecture
 rn-token-optimizer-mcp search_graph '{"name_pattern": "Login", "label": "Screen"}'
+rn-token-optimizer-mcp semantic_search_graph '{"query": "authentication flow", "limit": 5}'
 rn-token-optimizer-mcp trace_call_path '{"function_name": "handleGoogleLogin", "direction": "inbound"}'
 rn-token-optimizer-mcp find_dead_code
 rn-token-optimizer-mcp detect_changes '{"diff_text": "$(git diff HEAD)"}'
@@ -1024,8 +1142,35 @@ This means **zero extra cost** if you already pay for Cursor or Kiro. Direct mod
 
 ## Sample Projects
 
-The `samples/` directory contains ready-to-run reference projects that show
-exactly what the code intelligence graph produces for real code.
+The repo ships two reference projects for exploring the graph engine and **`graph ui`** dashboard.
+
+---
+
+### React Native Demo App Sample
+
+**Path:** [`demo-rn-app/`](./demo-rn-app/)
+
+A realistic React Native e-commerce app — **7 screens**, **4 hooks**, **4 services**, Redux store, and navigators. Index it in under 100ms and open the visual explorer immediately.
+
+```bash
+git clone https://github.com/Pradeep241094/rn-token-optimizer
+cd rn-token-optimizer && npm install && npm run build && npm link
+
+rn-token-optimizer graph index --dir ./demo-rn-app
+# ✔ 17 files · 122 nodes · 220 edges
+
+rn-token-optimizer graph ui --dir ./demo-rn-app
+# → http://localhost:7842
+
+rn-token-optimizer graph semantic "user login authentication" --dir ./demo-rn-app
+rn-token-optimizer graph trace checkout --dir ./demo-rn-app --direction inbound
+```
+
+| Search in explorer | Highlights |
+|--------------------|------------|
+| `"login auth"` | LoginScreen, useAuth, AuthService, handleLogin |
+| `"payment checkout"` | CheckoutScreen, useCart, CartService.checkout |
+| `"navigation stack"` | AppNavigator, AuthNavigator, MainTabNavigator |
 
 ---
 

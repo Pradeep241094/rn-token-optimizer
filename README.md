@@ -8,6 +8,8 @@
 [![Node.js >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 [![.NET 8](https://img.shields.io/badge/.NET-8-purple)](https://dotnet.microsoft.com/download)
 
+**[Changelog](./CHANGELOG.md)** · [Live site](https://prmargas.com/projects/rn-token-optimizer/) · [Full guide](./GUIDE.md)
+
 ---
 
 ## What it does
